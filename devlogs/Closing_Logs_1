@@ -1,0 +1,73 @@
+============================================
+CLOSING LOG #1
+Date: 2026-02-06 15:50 EST
+============================================
+
+## SESSION SUMMARY
+Implemented a download history feature with persistent JSON storage and a full tabbed UI. The application now tracks all completed downloads with metadata (title, URL, format, file size, timestamp) and presents them in a new "History" tab alongside the existing "Status Log" tab. Users can open files, show them in the file explorer, copy URLs, delete history entries, and delete downloaded files directly from the history view. Additionally, the UI color scheme was updated from blue accents to a monotone grey/black palette with red accents, and the liquid glass hover effect was enhanced.
+
+## CHANGES MADE
+### Files Modified
+- app/main.py: Major changes (360 insertions, 26 deletions):
+  - Added new imports: os, subprocess, sys, datetime, and app.history module
+  - Updated color scheme: replaced blue accent colors with red (#dc2626/#ef4444), changed backgrounds to pure black (#0a0a0a), updated glass layer colors for better depth
+  - Added COLOR_GLASS_HOVER (#353535) constant for translucent hover state
+  - Replaced the static "Status Log" card with a CTkTabview containing two tabs: "Status Log" and "History"
+  - Added scrollable history display with per-item cards showing title, timestamp, format badge, file size, and status
+  - Added action buttons per history item: Open, Show in Folder, Copy URL, Delete (history entry), Delete File (filesystem + history)
+  - Added warning labels in History tab about the 50-item limit and file deletion behavior
+  - Added _current_download_request tracking to capture download metadata on completion
+  - Added _capture_download_history() method that identifies the most recently modified file in the save directory after a successful download
+  - Added helper methods: _refresh_history(), _create_history_item(), _format_file_size(), _open_file(), _show_in_folder(), _copy_url(), _delete_history_item(), _delete_file()
+  - Updated format selector to use glass colors for unselected/hover states
+  - Updated Browse button to use glass hover color
+
+### Files Added
+- app/history.py: New module (112 lines) providing:
+  - DownloadRecord dataclass with fields: id (UUID), timestamp (ISO format), url, title, filename, filepath, mode, file_size, status, error_message
+  - get_history_path(): Resolves history.json location in %APPDATA%/YouTubeToFile (Windows) or ~/.config/YouTubeToFile (Unix), with temp directory fallback
+  - load_history(): Reads and deserializes history from JSON, handles corruption gracefully
+  - save_history(): Writes history to JSON, auto-trims to last 50 entries
+  - add_download(): Appends a record and saves
+  - delete_download(): Removes a record by ID and saves
+
+### Files Deleted
+- None
+
+## CODEBASE VERIFICATION
+### Checks Performed
+- [x] Python syntax verification (py_compile on all 6 .py files in app/ and build/)
+- [x] Import resolution check (verified all imports reference existing modules)
+- [x] File integrity check (all 11 expected project files present and non-empty)
+- [x] Dependency check (requirements.txt exists with 3 dependencies: customtkinter, yt-dlp, pyinstaller)
+- [x] Spec file check (build/yt_to_file.spec exists, references correct paths; new history.py will be picked up automatically through import chain)
+- [x] Common issues scan (no TODO/FIXME/HACK/XXX comments found)
+
+### Results
+PASS - All checks passed with no errors.
+
+### Errors Found
+- None
+
+### Notes
+- The PyInstaller spec file (build/yt_to_file.spec) does not need modification for app/history.py because PyInstaller automatically discovers imported modules through static analysis of the import chain (main.py -> history.py).
+- The history.json file is stored in the user's application data directory (%APPDATA%/YouTubeToFile on Windows), not in the project directory, so it will not interfere with version control.
+- The _capture_download_history() method uses a heuristic (most recently modified file in save_dir) to identify the downloaded file, which could be inaccurate if other file operations occur in the save directory simultaneously. This is an acceptable trade-off for simplicity.
+
+## GIT STATUS
+On branch master
+Your branch is up to date with 'origin/master'.
+
+Changes not staged for commit:
+  modified:   app/main.py
+
+Untracked files:
+  .claude/settings.local.json
+  app/history.py
+
+## ACTION TAKEN
+All checks passed. Staging changes (app/main.py, app/history.py, devlogs/Closing_Logs_1) and pushing to GitHub.
+Note: .claude/settings.local.json is excluded as it is a local IDE configuration file.
+============================================
+END OF CLOSING LOG #1
+============================================
