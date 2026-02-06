@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -22,5 +23,20 @@ def resource_path(relative_path: str | Path) -> Path:
 
 
 def ffmpeg_dir() -> Path:
-    return resource_path(Path("assets") / "ffmpeg")
+    """Return the directory containing ffmpeg binaries.
+
+    Checks bundled assets/ffmpeg/ first, then falls back to
+    the system PATH (e.g. Homebrew on macOS).
+    """
+    bundled = resource_path(Path("assets") / "ffmpeg")
+    ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+    if (bundled / ffmpeg_name).exists():
+        return bundled
+
+    # Fall back to system-installed ffmpeg
+    which = shutil.which("ffmpeg")
+    if which:
+        return Path(which).parent
+
+    return bundled
 

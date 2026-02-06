@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import queue
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -154,10 +155,12 @@ def run_download(
         if req.mode == "Audio Only (MP3)":
             event_queue.put({"type": "log", "message": "Mode: Audio Only (MP3)"})
             ff_dir = ffmpeg_dir()
-            if not (ff_dir / "ffmpeg.exe").exists():
+            ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+            if not (ff_dir / ffmpeg_name).exists():
                 raise FileNotFoundError(
                     "FFmpeg is required for MP3 conversion but was not found. "
-                    "Place ffmpeg.exe + ffprobe.exe in assets\\ffmpeg\\ (or run the build script which downloads them)."
+                    "Install FFmpeg (e.g. 'brew install ffmpeg' on macOS) or "
+                    "place ffmpeg binaries in assets/ffmpeg/."
                 )
         else:
             event_queue.put({"type": "log", "message": "Mode: Best Video (MP4)"})

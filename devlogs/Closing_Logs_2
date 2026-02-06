@@ -1,0 +1,65 @@
+============================================
+CLOSING LOG #2
+Date: 2026-02-06 16:11 EST
+============================================
+
+## SESSION SUMMARY
+Made the application cross-platform compatible for macOS development and testing. The codebase was originally Windows-focused, with hardcoded references to ffmpeg.exe and Windows-only path conventions. Two files were updated to detect the current platform at runtime and resolve FFmpeg binaries accordingly. On macOS, the app now falls back to a system-installed FFmpeg (e.g. via Homebrew at /opt/homebrew/bin/ffmpeg) when the bundled assets/ffmpeg/ directory does not contain a usable binary.
+
+## CHANGES MADE
+### Files Modified
+- app/resources.py: Updated ffmpeg_dir() to be cross-platform.
+  - Added `import shutil` for PATH-based executable lookup.
+  - ffmpeg_dir() now checks for the platform-correct binary name: "ffmpeg.exe" on Windows, "ffmpeg" on macOS/Linux.
+  - Added fallback logic: if the bundled assets/ffmpeg/ directory does not contain the expected binary, uses shutil.which("ffmpeg") to locate a system-installed FFmpeg and returns its parent directory.
+  - If neither bundled nor system FFmpeg is found, returns the bundled path as before (preserving existing error-handling behavior downstream).
+  - Added a docstring explaining the resolution strategy.
+
+- app/downloader.py: Fixed Windows-hardcoded FFmpeg existence check in run_download().
+  - Added `import sys` for platform detection.
+  - Changed the FFmpeg existence check from always looking for "ffmpeg.exe" to using the platform-aware binary name (sys.platform == "win32").
+  - Updated the FileNotFoundError message to suggest "brew install ffmpeg" on macOS as an installation option, and changed the path separator from backslash to forward slash for cross-platform clarity.
+
+### Files Added
+- None
+
+### Files Deleted
+- None
+
+## CODEBASE VERIFICATION
+### Checks Performed
+- [x] Python syntax verification (py_compile on all 6 .py files: app/main.py, app/downloader.py, app/resources.py, app/__init__.py, app/history.py, build/smoke_test.py)
+- [x] Import resolution check (verified all app module imports resolve: app.resources, app.downloader, app.history)
+- [x] File integrity check (all 11 expected project files present and non-empty)
+- [x] Dependency check (requirements.txt exists with 3 dependencies: customtkinter, yt-dlp, pyinstaller)
+- [x] Spec file check (build/yt_to_file.spec exists, references correct ROOT/APP/ASSETS_FFMPEG paths)
+- [x] Common issues scan (no TODO, FIXME, HACK, XXX, or BROKEN comments found)
+- [x] VS Code diagnostics check (zero diagnostics reported)
+
+### Results
+PASS - All checks passed with no errors.
+
+### Errors Found
+- None
+
+### Notes
+- The `sys` import was already present in app/resources.py (used for _MEIPASS detection), so the diff only adds `shutil`. In app/downloader.py, `sys` was a new import.
+- The build/build.ps1 script still checks for ffmpeg.exe and ffprobe.exe specifically, which is correct since builds are Windows-only (PyInstaller bundles a .exe).
+- The smoke test (build/smoke_test.py) will now work on macOS if FFmpeg is installed via Homebrew, since it calls run_download() which uses the updated ffmpeg_dir() resolution.
+- The README.md still describes the project as a "Windows GUI" application. If macOS support becomes official rather than dev-only, the README should be updated in a future session.
+
+## GIT STATUS
+On branch master
+Your branch is up to date with 'origin/master'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app/downloader.py
+	modified:   app/resources.py
+
+## ACTION TAKEN
+All checks passed. Ready to stage and push. Awaiting user confirmation.
+============================================
+END OF CLOSING LOG #2
+============================================
