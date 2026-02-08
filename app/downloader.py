@@ -193,6 +193,42 @@ def run_download(
         event_queue.put({"type": "done", "ok": False})
 
 
+@dataclass
+class VideoInfo:
+    title: str
+    channel: str
+    duration: int  # seconds
+    thumbnail_url: str
+
+
+def fetch_video_info(url: str) -> VideoInfo:
+    """
+    Fetches video metadata without downloading. Raises on error.
+    Designed to be called from a background thread.
+    """
+    opts: dict[str, Any] = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+    }
+    ff_dir = ffmpeg_dir()
+    if ff_dir.exists():
+        opts["ffmpeg_location"] = str(ff_dir)
+
+    with YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+
+    if not info:
+        raise ValueError("No info returned")
+
+    return VideoInfo(
+        title=info.get("title") or "Unknown title",
+        channel=info.get("uploader") or info.get("channel") or "Unknown",
+        duration=int(info.get("duration") or 0),
+        thumbnail_url=info.get("thumbnail") or "",
+    )
+
+
 def format_status_line(evt: DownloadEvent) -> str:
     """
     Formats a single-line status for the UI from a progress event.
@@ -215,4 +251,3 @@ def format_status_line(evt: DownloadEvent) -> str:
 
     right = "  •  ".join(right_parts) if right_parts else ""
     return f"{left}" + (f"    {right}" if right else "")
-

@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import io
 import os
 import queue
 import subprocess
 import sys
 import threading
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog
 
 import customtkinter as ctk
+from PIL import Image
 
 # Allow running `python app/main.py` without import issues.
 if __name__ == "__main__" and __package__ is None:
@@ -17,7 +20,7 @@ if __name__ == "__main__" and __package__ is None:
 
     sys.path.append(str(_Path(__file__).resolve().parents[1]))
 
-from app.downloader import DownloadRequest, format_status_line, run_download
+from app.downloader import DownloadRequest, VideoInfo, fetch_video_info, format_status_line, run_download
 from app.history import DownloadRecord, add_download, delete_download, load_history
 
 
@@ -38,6 +41,143 @@ COLOR_ERROR = "#dc2626"           # Red error state (matches accent)
 COLOR_BORDER = "#252525"          # Subtle border (darker for depth)
 
 
+# ---------------------------------------------------------------------------
+# Colour interpolation helpers (used by AnimatedToggle and App)
+# ---------------------------------------------------------------------------
+
+def _hex_to_rgb(h: str) -> tuple[int, int, int]:
+    h = h.lstrip("#")
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+def _lerp_hex(c1: str, c2: str, t: float) -> str:
+    r1, g1, b1 = _hex_to_rgb(c1)
+    r2, g2, b2 = _hex_to_rgb(c2)
+    return (
+        f"#{int(r1 + (r2 - r1) * t):02x}"
+        f"{int(g1 + (g2 - g1) * t):02x}"
+        f"{int(b1 + (b2 - b1) * t):02x}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Animated toggle widget with colour crossfade
+# ---------------------------------------------------------------------------
+
+class AnimatedToggle(ctk.CTkFrame):
+    """Two-button toggle with smooth colour crossfade between options."""
+
+    _ANIM_MS = 200   # total crossfade duration
+    _ANIM_FRAMES = 12  # interpolation steps
+
+    def __init__(
+        self,
+        master,
+        values: list[str],
+        height: int = 34,
+        font=None,
+        fg_color=COLOR_GLASS_LIGHT,
+        selected_color=COLOR_ACCENT,
+        text_color=COLOR_TEXT_PRIMARY,
+        corner_radius: int = 8,
+        **kwargs,
+    ):
+        super().__init__(
+            master, fg_color=fg_color, corner_radius=corner_radius,
+            height=height, **kwargs,
+        )
+        self.pack_propagate(False)
+        self.grid_propagate(False)
+
+        self._values = list(values)
+        self._selected_idx = 0
+        self._animating = False
+        self._disabled = False
+        self._sel_color = selected_color
+        self._unsel_color = fg_color
+
+        # Inner padding frame
+        inner = ctk.CTkFrame(self, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=3, pady=3)
+        for i in range(len(values)):
+            inner.grid_columnconfigure(i, weight=1)
+        inner.grid_rowconfigure(0, weight=1)
+
+        self._btns: list[ctk.CTkButton] = []
+        for i, val in enumerate(values):
+            is_sel = i == 0
+            btn = ctk.CTkButton(
+                inner,
+                text=val,
+                font=font,
+                fg_color=selected_color if is_sel else fg_color,
+                hover_color=COLOR_ACCENT_LIGHT if is_sel else COLOR_GLASS_HOVER,
+                text_color=text_color,
+                corner_radius=max(corner_radius - 3, 4),
+                border_width=0,
+                command=lambda idx=i: self._on_click(idx),
+            )
+            btn.grid(row=0, column=i, sticky="nsew", padx=1)
+            self._btns.append(btn)
+
+    # -- public API ---------------------------------------------------------
+
+    def get(self) -> str:
+        return self._values[self._selected_idx]
+
+    def set(self, value: str) -> None:
+        if value not in self._values:
+            return
+        self._selected_idx = self._values.index(value)
+        for i, btn in enumerate(self._btns):
+            if i == self._selected_idx:
+                btn.configure(fg_color=self._sel_color,
+                              hover_color=COLOR_ACCENT_LIGHT)
+            else:
+                btn.configure(fg_color=self._unsel_color,
+                              hover_color=COLOR_GLASS_HOVER)
+
+    def configure(self, **kwargs):
+        state = kwargs.pop("state", None)
+        if state is not None:
+            self._disabled = state == "disabled"
+            for btn in self._btns:
+                btn.configure(state=state)
+        if kwargs:
+            super().configure(**kwargs)
+
+    # -- internal -----------------------------------------------------------
+
+    def _on_click(self, idx: int) -> None:
+        if self._disabled or idx == self._selected_idx or self._animating:
+            return
+        old_idx = self._selected_idx
+        self._selected_idx = idx
+        self._animating = True
+        self._crossfade(old_idx, idx, 0)
+
+    def _crossfade(self, old_idx: int, new_idx: int, step: int) -> None:
+        if step > self._ANIM_FRAMES:
+            self._btns[old_idx].configure(
+                fg_color=self._unsel_color, hover_color=COLOR_GLASS_HOVER,
+            )
+            self._btns[new_idx].configure(
+                fg_color=self._sel_color, hover_color=COLOR_ACCENT_LIGHT,
+            )
+            self._animating = False
+            return
+        t = step / self._ANIM_FRAMES
+        eased = 1 - (1 - t) ** 3  # cubic ease-out
+        self._btns[old_idx].configure(
+            fg_color=_lerp_hex(self._sel_color, self._unsel_color, eased),
+        )
+        self._btns[new_idx].configure(
+            fg_color=_lerp_hex(self._unsel_color, self._sel_color, eased),
+        )
+        ms = max(1, self._ANIM_MS // self._ANIM_FRAMES)
+        self.after(ms, lambda: self._crossfade(old_idx, new_idx, step + 1))
+
+
 class App(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
@@ -56,6 +196,11 @@ class App(ctk.CTk):
         self._event_queue: "queue.Queue[dict]" = queue.Queue()
         self._download_thread: threading.Thread | None = None
         self._is_downloading = False
+        self._progress_value = 0.0
+        self._progress_anim_id: str | None = None
+        self._status_anim_id: str | None = None
+        self._preview_debounce_id: str | None = None
+        self._last_previewed_url: str = ""
 
         self._build_ui()
 
@@ -118,15 +263,67 @@ class App(ctk.CTk):
             border_width=1,
             text_color=COLOR_TEXT_PRIMARY,
         )
-        self.url_entry.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 20))
+        self.url_entry.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 12))
+        self.url_entry.bind("<KeyRelease>", self._on_url_changed)
+        self.url_entry.bind("<<Paste>>", self._on_url_changed)
+
+        # Preview card (hidden until a valid URL is detected)
+        self._preview_frame = ctk.CTkFrame(
+            card,
+            fg_color=COLOR_GLASS_LIGHT,
+            corner_radius=12,
+            border_width=1,
+            border_color=COLOR_BORDER,
+        )
+        # Not gridded yet — will be shown/hidden dynamically
+
+        self._preview_thumb = ctk.CTkLabel(
+            self._preview_frame,
+            text="",
+            width=120,
+            height=68,
+            fg_color=COLOR_BG_PRIMARY,
+            corner_radius=8,
+        )
+        self._preview_thumb.grid(row=0, column=0, rowspan=3, padx=(12, 12), pady=12, sticky="nsw")
+
+        self._preview_title = ctk.CTkLabel(
+            self._preview_frame,
+            text="",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=COLOR_TEXT_PRIMARY,
+            anchor="w",
+            wraplength=500,
+        )
+        self._preview_title.grid(row=0, column=1, sticky="ew", padx=(0, 12), pady=(12, 2))
+
+        self._preview_meta = ctk.CTkLabel(
+            self._preview_frame,
+            text="",
+            font=ctk.CTkFont(size=11),
+            text_color=COLOR_TEXT_SECONDARY,
+            anchor="w",
+        )
+        self._preview_meta.grid(row=1, column=1, sticky="ew", padx=(0, 12))
+
+        self._preview_status = ctk.CTkLabel(
+            self._preview_frame,
+            text="",
+            font=ctk.CTkFont(size=10),
+            text_color=COLOR_TEXT_SECONDARY,
+            anchor="w",
+        )
+        self._preview_status.grid(row=2, column=1, sticky="ew", padx=(0, 12), pady=(0, 12))
+
+        self._preview_frame.grid_columnconfigure(1, weight=1)
 
         # Divider line
         divider1 = ctk.CTkFrame(card, fg_color=COLOR_BORDER, height=1)
-        divider1.grid(row=2, column=0, sticky="ew", padx=20, pady=0)
+        divider1.grid(row=3, column=0, sticky="ew", padx=20, pady=0)
 
         # Format and Folder Section
         options_frame = ctk.CTkFrame(card, fg_color="transparent")
-        options_frame.grid(row=3, column=0, sticky="ew", padx=20, pady=20)
+        options_frame.grid(row=4, column=0, sticky="ew", padx=20, pady=20)
         options_frame.grid_columnconfigure(0, weight=1)
         options_frame.grid_columnconfigure(1, weight=1)
 
@@ -139,17 +336,11 @@ class App(ctk.CTk):
         )
         fmt_label.grid(row=0, column=0, sticky="w")
 
-        self.format_selector = ctk.CTkSegmentedButton(
+        self.format_selector = AnimatedToggle(
             options_frame,
             values=["MP4 Video", "MP3 Audio"],
             height=34,
             font=ctk.CTkFont(size=11, weight="bold"),
-            fg_color=COLOR_GLASS_LIGHT,
-            selected_color=COLOR_ACCENT,
-            selected_hover_color=COLOR_ACCENT_LIGHT,
-            unselected_color=COLOR_GLASS_LIGHT,
-            unselected_hover_color=COLOR_GLASS_HOVER,
-            text_color=COLOR_TEXT_PRIMARY,
         )
         self.format_selector.set("MP4 Video")
         self.format_selector.grid(row=1, column=0, sticky="ew", pady=(6, 0))
@@ -201,7 +392,7 @@ class App(ctk.CTk):
             corner_radius=12,
             border_width=0,
         )
-        self.download_button.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 20))
+        self.download_button.grid(row=5, column=0, sticky="ew", padx=20, pady=(0, 20))
 
         # Progress section with glass morphism
         progress_card = ctk.CTkFrame(
@@ -300,6 +491,56 @@ class App(ctk.CTk):
         # Store for later reference
         self._current_download_request: DownloadRequest | None = None
 
+    # -- animation helpers --------------------------------------------------
+
+    @staticmethod
+    def _lerp_color(c1: str, c2: str, t: float) -> str:
+        return _lerp_hex(c1, c2, t)
+
+    def _animate_progress(self, target: float) -> None:
+        """Smoothly interpolate the progress bar to *target*."""
+        if self._progress_anim_id:
+            self.after_cancel(self._progress_anim_id)
+            self._progress_anim_id = None
+        target = max(0.0, min(1.0, target))
+        self._progress_step(self._progress_value, target, 0, 5)
+
+    def _progress_step(self, start: float, end: float, step: int, total: int) -> None:
+        if step > total:
+            self.progress.set(end)
+            self._progress_value = end
+            self._progress_anim_id = None
+            return
+        t = step / total
+        eased = 1 - (1 - t) ** 2  # quadratic ease-out
+        val = start + (end - start) * eased
+        self.progress.set(val)
+        self._progress_value = val
+        self._progress_anim_id = self.after(
+            16, lambda: self._progress_step(start, end, step + 1, total),
+        )
+
+    def _set_status_animated(self, text: str, target_color: str) -> None:
+        """Set status text with a colour fade-in."""
+        self.status_line.configure(text=text)
+        if self._status_anim_id:
+            self.after_cancel(self._status_anim_id)
+        self._status_fade(COLOR_BG_SECONDARY, target_color, 0, 8)
+
+    def _status_fade(self, c_from: str, c_to: str, step: int, total: int) -> None:
+        if step > total:
+            self.status_line.configure(text_color=c_to)
+            self._status_anim_id = None
+            return
+        t = step / total
+        eased = 1 - (1 - t) ** 2
+        self.status_line.configure(text_color=self._lerp_color(c_from, c_to, eased))
+        self._status_anim_id = self.after(
+            25, lambda: self._status_fade(c_from, c_to, step + 1, total),
+        )
+
+    # -- path helpers -------------------------------------------------------
+
     def _truncate_path(self, path: str, max_len: int) -> str:
         """Truncate path to max_len characters, showing end of path."""
         if len(path) <= max_len:
@@ -337,6 +578,96 @@ class App(ctk.CTk):
         self.folder_value.configure(text=self._truncate_path(str(self.save_dir), 40))
         self._log(f"✓ Save location updated")
 
+    def _on_url_changed(self, event=None) -> None:
+        """Debounce URL changes and trigger preview fetch."""
+        if self._preview_debounce_id:
+            self.after_cancel(self._preview_debounce_id)
+        self._preview_debounce_id = self.after(600, self._trigger_preview)
+
+    def _trigger_preview(self) -> None:
+        """Start a background fetch for video info if URL changed."""
+        url = self.url_entry.get().strip()
+        if not url or url == self._last_previewed_url:
+            if not url:
+                self._hide_preview()
+            return
+        self._last_previewed_url = url
+        self._show_preview_loading()
+        threading.Thread(target=self._fetch_preview, args=(url,), daemon=True).start()
+
+    def _fetch_preview(self, url: str) -> None:
+        """Background: fetch video info and thumbnail, then update UI."""
+        try:
+            info = fetch_video_info(url)
+            # Fetch thumbnail image bytes
+            thumb_image = None
+            if info.thumbnail_url:
+                try:
+                    req = urllib.request.Request(
+                        info.thumbnail_url,
+                        headers={"User-Agent": "Mozilla/5.0"},
+                    )
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        data = resp.read()
+                    pil_img = Image.open(io.BytesIO(data))
+                    # Crop to 16:9 if needed
+                    w, h = pil_img.size
+                    target_ratio = 16 / 9
+                    if abs(w / h - target_ratio) > 0.1:
+                        new_h = int(w / target_ratio)
+                        if new_h <= h:
+                            top = (h - new_h) // 2
+                            pil_img = pil_img.crop((0, top, w, top + new_h))
+                    pil_img = pil_img.resize((120, 68), Image.LANCZOS)
+                    thumb_image = ctk.CTkImage(pil_img, size=(120, 68))
+                except Exception:
+                    thumb_image = None
+            # Schedule UI update on main thread
+            self.after(0, lambda: self._update_preview(info, thumb_image, url))
+        except Exception as e:
+            self.after(0, lambda: self._show_preview_error(url))
+
+    def _show_preview_loading(self) -> None:
+        """Show preview card with loading state."""
+        self._preview_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 12))
+        self._preview_thumb.configure(image=None, text="⏳")
+        self._preview_title.configure(text="Fetching video info…")
+        self._preview_meta.configure(text="")
+        self._preview_status.configure(text="")
+
+    def _update_preview(self, info: VideoInfo, thumb_image, url: str) -> None:
+        """Update preview card with fetched info."""
+        # Only update if URL hasn't changed since we started
+        if self.url_entry.get().strip() != url:
+            return
+        if thumb_image:
+            self._preview_thumb.configure(image=thumb_image, text="")
+        else:
+            self._preview_thumb.configure(image=None, text="🎬")
+        self._preview_title.configure(text=info.title)
+        mins, secs = divmod(info.duration, 60)
+        hrs, mins = divmod(mins, 60)
+        if hrs:
+            dur_str = f"{hrs}:{mins:02d}:{secs:02d}"
+        else:
+            dur_str = f"{mins}:{secs:02d}"
+        self._preview_meta.configure(text=f"{info.channel}  •  {dur_str}")
+        self._preview_status.configure(text="✓ Video found", text_color=COLOR_SUCCESS)
+
+    def _show_preview_error(self, url: str) -> None:
+        """Show error state in preview card."""
+        if self.url_entry.get().strip() != url:
+            return
+        self._preview_thumb.configure(image=None, text="✗")
+        self._preview_title.configure(text="Could not load video info")
+        self._preview_meta.configure(text="Check the URL and try again")
+        self._preview_status.configure(text="", text_color=COLOR_ERROR)
+
+    def _hide_preview(self) -> None:
+        """Hide the preview card."""
+        self._preview_frame.grid_remove()
+        self._last_previewed_url = ""
+
     def _on_download(self) -> None:
         if self._is_downloading:
             return
@@ -357,8 +688,9 @@ class App(ctk.CTk):
         req = DownloadRequest(url=url, save_dir=self.save_dir, mode=actual_mode)
         self._current_download_request = req  # Store for history capture
 
+        self._progress_value = 0.0
         self.progress.set(0.0)
-        self.status_line.configure(text="Starting download…", text_color=COLOR_TEXT_SECONDARY)
+        self._set_status_animated("Starting download…", COLOR_TEXT_SECONDARY)
         self._set_busy(True)
         self._log("⬇ Starting download…")
 
@@ -378,19 +710,19 @@ class App(ctk.CTk):
                     self._log(str(evt.get("message", "")))
                 elif et == "progress":
                     value = float(evt.get("value", 0.0))
-                    self.progress.set(max(0.0, min(1.0, value)))
+                    self._animate_progress(value)
                     self.status_line.configure(text=format_status_line(evt), text_color=COLOR_TEXT_SECONDARY)
                 elif et == "done":
                     ok = bool(evt.get("ok", False))
                     self._set_busy(False)
                     if ok:
-                        self.progress.set(1.0)
-                        self.status_line.configure(text="✓ Download complete!", text_color=COLOR_SUCCESS)
+                        self._animate_progress(1.0)
+                        self._set_status_animated("✓ Download complete!", COLOR_SUCCESS)
                         self._log("✓ Download complete!")
                         # Capture download for history
                         self._capture_download_history()
                     else:
-                        self.status_line.configure(text="✗ Download failed. Check log.", text_color=COLOR_ERROR)
+                        self._set_status_animated("✗ Download failed. Check log.", COLOR_ERROR)
         except queue.Empty:
             pass
         finally:
@@ -702,4 +1034,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
