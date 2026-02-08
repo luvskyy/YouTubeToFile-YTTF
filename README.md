@@ -4,7 +4,7 @@ A modern Windows GUI downloader built with **customtkinter** + **yt-dlp**, packa
 
 ## Features
 
-- Dark, professional UI (customtkinter **Dark** + **blue** theme)
+- Dark, professional UI (customtkinter **Dark** + **red** theme)
 - Paste a YouTube URL
 - Choose output:
   - **Best Video (MP4)** (merges video + audio)
@@ -12,6 +12,9 @@ A modern Windows GUI downloader built with **customtkinter** + **yt-dlp**, packa
 - Choose a save folder
 - Real-time progress bar + status log
 - Download runs in a background thread (UI stays responsive)
+
+## Windows (easiest install)
+Simply download the installer in the releases tab.
 
 ## Run from source (dev)
 
