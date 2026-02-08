@@ -1,4 +1,4 @@
-# YouTube to File / YTDL
+# YouTube to File / YTTF
 
 A private locally ran youtube video / audio (MP4/MP3) downloader. Download as much as you want without Youtube Premium and without the risk of malicious websites!
 
@@ -22,7 +22,7 @@ A private locally ran youtube video / audio (MP4/MP3) downloader. Download as mu
 
 ## Windows (easiest install)
 
-Simply download the installer in the releases tab.
+Simply download the installer in releases.
 
 ## Run from source (macOS/Linux)
 
