@@ -2,6 +2,9 @@
 
 A private locally ran youtube video / audio (MP4/MP3) downloader. Download as much as you want without Youtube Premium and without the risk of malicious websites!
 
+## Ko-Fi link
+https://ko-fi.com/luvski
+
 ## How to use
 
 - Run the installer
