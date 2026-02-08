@@ -16,7 +16,7 @@ A modern Windows GUI downloader built with **customtkinter** + **yt-dlp**, packa
 ## Windows (easiest install)
 Simply download the installer in the releases tab.
 
-## Run from source (dev)
+## Run from source (macOS/Linux)
 
 ```powershell
 python -m venv .venv
@@ -34,16 +34,6 @@ python app\main.py
 ```
 
 Output:\n- `dist\\YouTubeToFile\\YouTubeToFile.exe`
-
-## Build a one-click installer (Setup .exe)
-
-1. Install **Inno Setup 6** (includes `ISCC.exe`).\n2. Run the same build script:
-
-```powershell
-.\build\build.ps1
-```
-
-Installer output:\n- `installer\\Output\\YouTubeToFile-Setup.exe`
 
 ## Notes
 
