@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 import urllib.request
+import webbrowser
 from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog
@@ -26,6 +27,7 @@ from app.history import DownloadRecord, add_download, delete_download, load_hist
 
 APP_TITLE = "YouTube to File"
 APP_SUBTITLE = "Download and convert videos instantly."
+KOFI_URL = "https://ko-fi.com/luvski"
 
 # Modern liquid glass color palette with grey/black base and red accents
 COLOR_BG_PRIMARY = "#0a0a0a"      # Pure black base
@@ -215,6 +217,7 @@ class App(ctk.CTk):
         # Header Section
         header = ctk.CTkFrame(root, fg_color="transparent")
         header.pack(fill="x", pady=(0, 32))
+        header.grid_columnconfigure(0, weight=1)
 
         title = ctk.CTkLabel(
             header,
@@ -222,7 +225,7 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=28, weight="bold"),
             text_color=COLOR_TEXT_PRIMARY,
         )
-        title.pack(anchor="w")
+        title.grid(row=0, column=0, sticky="w")
 
         subtitle = ctk.CTkLabel(
             header,
@@ -230,7 +233,23 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=14),
             text_color=COLOR_TEXT_SECONDARY,
         )
-        subtitle.pack(anchor="w", pady=(6, 0))
+        subtitle.grid(row=1, column=0, sticky="w", pady=(6, 0))
+
+        kofi_btn = ctk.CTkButton(
+            header,
+            text="☕  Support",
+            width=110,
+            height=34,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=COLOR_GLASS_LIGHT,
+            hover_color=COLOR_GLASS_HOVER,
+            text_color=COLOR_TEXT_PRIMARY,
+            border_width=1,
+            border_color=COLOR_BORDER,
+            corner_radius=10,
+            command=lambda: webbrowser.open(KOFI_URL),
+        )
+        kofi_btn.grid(row=0, column=1, rowspan=2, sticky="e")
 
         # Main input card with glass morphism effect
         card = ctk.CTkFrame(

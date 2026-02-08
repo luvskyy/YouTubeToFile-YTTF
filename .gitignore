@@ -27,8 +27,8 @@ UI_FEATURES.md
 .DS_Store
 Thumbs.db
 
-# Build artifacts (except source assets)
-/installer/Output/
+# Build artifacts
+/installer/
 
 # Temporary files
 .tmp_smoke/

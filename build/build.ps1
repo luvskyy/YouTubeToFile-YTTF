@@ -43,7 +43,7 @@ function Build-Exe {
   }
 
   # PyInstaller may leave an extra top-level EXE; keep the onedir output only.
-  $extraExe = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path "dist\YouTubeToFile.exe"
+  $extraExe = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path "dist\YTTF.exe"
   if (Test-Path $extraExe) {
     Remove-Item -Force $extraExe
   }
@@ -53,7 +53,7 @@ function Build-Installer {
   Write-Section "Building installer (Inno Setup)"
 
   $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-  $iss = Join-Path $repoRoot "installer\YouTubeToFile.iss"
+  $iss = Join-Path $repoRoot "installer\YTTF.iss"
   if (-not (Test-Path $iss)) {
     Write-Host "No installer script found at: $iss"
     return
@@ -73,7 +73,7 @@ function Build-Installer {
     throw "ISCC failed with exit code $LASTEXITCODE"
   }
 
-  $setupExe = Join-Path $repoRoot "installer\Output\YouTubeToFile-Setup.exe"
+  $setupExe = Join-Path $repoRoot "installer\Output\YTTF-Setup.exe"
   if (Test-Path $setupExe) {
     Write-Host "Installer created: $setupExe"
   } else {
@@ -81,7 +81,7 @@ function Build-Installer {
   }
 }
 
-Write-Section "YouTubeToFile build"
+Write-Section "YTTF build"
 Ensure-Venv
 Install-Deps
 Ensure-FFmpeg
@@ -89,4 +89,4 @@ Build-Exe
 Build-Installer
 
 Write-Section "Done"
-Write-Host "Output: dist\YouTubeToFile\YouTubeToFile.exe"
+Write-Host "Output: dist\YTTF\YTTF.exe"
