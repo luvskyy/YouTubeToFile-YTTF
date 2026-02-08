@@ -9,14 +9,19 @@ A private locally ran youtube video / audio (MP4/MP3) downloader. Download as mu
 - Choose output:
   - **(MP4)** (video)
   - **(MP3)** (audio)
-- Choose a custom save folder
+- Choose a save location
+- Hit download!
+
+## Features
+
 - Real-time progress bar + status log
 - Video preview
-- Download history tab
+- Download history tab (last 50)
 - Manage downloads in the app
 - Download runs in a background thread
 
 ## Windows (easiest install)
+
 Simply download the installer in the releases tab.
 
 ## Run from source (macOS/Linux)
