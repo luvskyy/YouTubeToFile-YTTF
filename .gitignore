@@ -15,6 +15,11 @@ env/
 .vscode/
 .idea/
 .claude/
+
+# Docs
+CLAUDE.md
+UI_REDESIGN.md
+UI_FEATURES.md
 *.swp
 *.swo
 
