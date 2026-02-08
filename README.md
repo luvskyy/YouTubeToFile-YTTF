@@ -39,6 +39,9 @@ Simply download the installer in releases.
 
 Output: `dist\\YouTubeToFile\\YouTubeToFile.exe`
 
+## Uninstall
+To uninstall simply delete the install folder.
+
 ## Notes
 
 - The build script automatically downloads a Windows FFmpeg “essentials” zip and copies `ffmpeg.exe` + `ffprobe.exe` into `assets\\ffmpeg\\` before building. If you’re behind a proxy or downloads are blocked, you can manually place `ffmpeg.exe` and `ffprobe.exe` into `assets\\ffmpeg\\` and rerun the build.
