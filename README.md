@@ -41,8 +41,8 @@ python app\main.py
 .\build\build.ps1
 ```
 
-Output:\n- `dist\\YouTubeToFile\\YouTubeToFile.exe`
+Output: `dist\\YouTubeToFile\\YouTubeToFile.exe`
 
 ## Notes
 
-- The build script automatically downloads a Windows FFmpeg “essentials” zip and copies `ffmpeg.exe` + `ffprobe.exe` into `assets\\ffmpeg\\` before building.\n- If you’re behind a proxy or downloads are blocked, you can manually place `ffmpeg.exe` and `ffprobe.exe` into `assets\\ffmpeg\\` and rerun the build.
+- The build script automatically downloads a Windows FFmpeg “essentials” zip and copies `ffmpeg.exe` + `ffprobe.exe` into `assets\\ffmpeg\\` before building. If you’re behind a proxy or downloads are blocked, you can manually place `ffmpeg.exe` and `ffprobe.exe` into `assets\\ffmpeg\\` and rerun the build.
