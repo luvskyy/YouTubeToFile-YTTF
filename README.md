@@ -26,14 +26,7 @@ Simply download the installer in releases.
 
 ## Run from source (macOS/Linux)
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -U pip
-pip install -r requirements.txt
-
-python app\main.py
-```
+*Fix coming next update
 
 ## Build a Windows .exe (PyInstaller)
 
