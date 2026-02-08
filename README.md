@@ -1,17 +1,20 @@
-# YouTube to File (Windows GUI)
+# YouTube to File / YTDL
 
-A modern Windows GUI downloader built with **customtkinter** + **yt-dlp**, packaged as a **.exe** with **bundled FFmpeg** for MP3 extraction.
+A private locally ran youtube video / audio (MP4/MP3) downloader. Download as much as you want without Youtube Premium and without the risk of malicious websites!
 
-## Features
+## How to use
 
-- Dark, professional UI (customtkinter **Dark** + **red** theme)
+- Run the installer
 - Paste a YouTube URL
 - Choose output:
-  - **Best Video (MP4)** (merges video + audio)
-  - **Audio Only (MP3)** (extracts + converts to mp3)
-- Choose a save folder
+  - **(MP4)** (video)
+  - **(MP3)** (audio)
+- Choose a custom save folder
 - Real-time progress bar + status log
-- Download runs in a background thread (UI stays responsive)
+- Video preview
+- Download history tab
+- Manage downloads in the app
+- Download runs in a background thread
 
 ## Windows (easiest install)
 Simply download the installer in the releases tab.
