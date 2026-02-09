@@ -27,9 +27,15 @@ https://ko-fi.com/luvski
 
 Simply download the installer in releases.
 
-## Run from source (macOS/Linux)
+## macOS
+1. Install ffmpeg
+```powershell
+brew install ffmpeg
+```
+2. Download and install the .dmg file in releases
 
-*Fix coming next update
+## Linux
+*coming soon
 
 ## Build a Windows .exe (PyInstaller)
 
