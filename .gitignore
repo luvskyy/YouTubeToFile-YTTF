@@ -5,6 +5,7 @@ __pycache__/
 *.so
 .Python
 build/yt_to_file/
+build/yt_to_file_macos/
 *.egg-info/
 dist/
 .venv/
@@ -29,6 +30,7 @@ Thumbs.db
 
 # Build artifacts
 /installer/
+*.dmg
 
 # Temporary files
 .tmp_smoke/
