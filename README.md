@@ -33,6 +33,7 @@ Simply download the installer in releases.
 brew install ffmpeg
 ```
 2. Download and install the .dmg file in releases
+3. Refer to notes at the bottom of this readme
 
 ## Linux
 *coming soon
@@ -51,3 +52,15 @@ To uninstall simply delete the install folder.
 ## Notes
 
 - The build script automatically downloads a Windows FFmpeg “essentials” zip and copies `ffmpeg.exe` + `ffprobe.exe` into `assets\\ffmpeg\\` before building. If you’re behind a proxy or downloads are blocked, you can manually place `ffmpeg.exe` and `ffprobe.exe` into `assets\\ffmpeg\\` and rerun the build.
+
+- macOS ONLY
+The app is ad-hoc signed by PyInstaller but not notarized
+  with Apple. On first launch, users will see:
+
+  "YTTF.app cannot be opened because the developer cannot be
+  verified"
+
+  You'll need to either:
+  - Right-click → Open → click "Open" in the dialog
+  - Or go to System Settings → Privacy & Security → click "Open
+   Anyway"
